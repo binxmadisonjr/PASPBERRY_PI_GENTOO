@@ -6,77 +6,106 @@ source ./setup/shared.sh
 load_config
 check_root
 
-log_title "Step 4: System Configuration"
+log_title "Step 5: Final Setup (User, Services, Display)"
 
-ROOTFS="$BUILD_DIR/rootfs"
-BOOTFS="$BUILD_DIR/bootfs"
+# Ensure mountpoints exist
+cd "$BUILD_DIR"
+mkdir -p rootfs/dev rootfs/proc rootfs/sys
 
-# Hash root password
-ROOT_PASSWORD_SALT=$(openssl rand -base64 12)
-ROOT_PASSWORD_HASHED=$(openssl passwd -6 -salt "$ROOT_PASSWORD_SALT" "$ROOT_PASSWORD")
+# Mount virtual filesystems
+log_step "Mounting /dev, /proc, /sys to chroot..."
+mount --bind /dev "$BUILD_DIR/rootfs/dev"
+mount --bind /proc "$BUILD_DIR/rootfs/proc"
+mount --bind /sys "$BUILD_DIR/rootfs/sys"
 
-log_step "Setting root password..."
-sed -i "s|^root:[^:]*:|root:${ROOT_PASSWORD_HASHED}:|" "$ROOTFS/etc/shadow"
+log_step "Entering chroot environment..."
 
-log_step "Setting keyboard layout: $KEYMAP"
-echo "KEYMAP=\"$KEYMAP\"" > "$ROOTFS/etc/conf.d/keymaps"
+# Export variables to chroot
+export USERNAME ROOT_PASSWORD TIMEZONE KEYMAP
 
-log_step "Setting hostname: $HOSTNAME"
-echo "$HOSTNAME" > "$ROOTFS/etc/hostname"
+# Run commands in chroot
+env -i USERNAME="$USERNAME" ROOT_PASSWORD="$ROOT_PASSWORD" TIMEZONE="$TIMEZONE" KEYMAP="$KEYMAP" chroot "$BUILD_DIR/rootfs" /bin/bash <<'EOF'
+set -e
 
-log_step "Linking net.end0 for Ethernet..."
-ln -sf net.lo "$ROOTFS/etc/init.d/net.end0"
+# Sync and set profile
+emerge --sync
+eselect profile set genpi64:default/linux/arm64/23.0/split-usr/desktop/genpi64
 
-log_step "Fixing ttyAMA0 bug..."
-sed -i 's/^f0/#f0/' "$ROOTFS/etc/inittab"
+# Package use flags
+mkdir -p /etc/portage/package.use
+cat > /etc/portage/package.use/rpi-64bit-meta <<USEFLAGS
+dev-embedded/rpi-64bit-meta apps -weekly-genup
+USEFLAGS
 
-log_step "Adding fstab entry..."
-echo "PARTUUID=6c586e13-01 /boot vfat defaults,noatime 0 0" >> "$ROOTFS/etc/fstab"
+# License acceptance
+mkdir -p /etc/portage/package.license
+echo "media-fonts/ipamonafont grass-ipafonts" > /etc/portage/package.license/ipamonafont
 
-log_step "Editing cmdline.txt..."
-sed -i "s|root=.* |root=PARTUUID=6c586e13-02 rootfstype=btrfs rootdelay=0 |" "$BOOTFS/cmdline.txt"
+# Install meta packages
+emerge --ask=n -j5 --keep-going rpi-64bit-meta
 
-log_step "Setting up Portage repos.conf..."
-mkdir -p "$ROOTFS/etc/portage/repos.conf"
+# Config updates
+etc-update --automode -3
+ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
+env-update && source /etc/profile
 
-cat > "$ROOTFS/etc/portage/repos.conf/gentoo.conf" <<EOF
-[DEFAULT]
-main-repo = gentoo
+# Create user
+useradd "$USERNAME"
+echo "$USERNAME:$ROOT_PASSWORD" | chpasswd
+usermod -aG wheel "$USERNAME"
 
-[gentoo]
-location = /var/db/repos/gentoo
-sync-type = rsync
-sync-uri = rsync://dev.drassal.net/gentoo-portage_20250115
-auto-sync = yes
+# Sudo privileges
+sed -i 's|# %wheel|%wheel|' /etc/sudoers
+sed -i 's|ALL=(ALL:ALL) ALL|ALL=(ALL:ALL) NOPASSWD: ALL|' /etc/sudoers
+
+# Lock root login
+passwd -l root
+sed -i 's|^PermitRootLogin.*|#PermitRootLogin prohibit-password|' /etc/ssh/sshd_config
+
+# Enable services
+rc-update add dbus default
+rc-update add NetworkManager default
+rc-update add display-manager default
+rc-update add sshd default
+rc-update add ntpd default
+
+# Configure display manager
+echo 'DISPLAY_MANAGER="lightdm"' > /etc/conf.d/display-manager
+echo 'XSESSION="Xfce4"' > /etc/env.d/90xsession
+env-update && source /etc/profile
+
+# Optional: fix LightDM background if default exists
+sed -i 's|user-background=true|user-background=false|' /etc/lightdm/lightdm-gtk-greeter.conf || true
+
+# X11 keyboard + video
+mkdir -p /etc/X11/xorg.conf.d
+
+cat > /etc/X11/xorg.conf.d/99-keyboard-layout.conf <<KBD
+Section "InputClass"
+  Identifier "system-keyboard"
+  MatchIsKeyboard "on"
+  Option "XkbLayout" "$KEYMAP"
+EndSection
+KBD
+
+cat > /etc/X11/xorg.conf.d/99-video.conf <<VID
+Section "OutputClass"
+  Identifier "vc4"
+  MatchDriver "vc4"
+  Driver "modesetting"
+  Option "Accel" "true"
+  Option "PrimaryGPU" "true"
+EndSection
+VID
 EOF
 
-cat > "$ROOTFS/etc/portage/repos.conf/genpi64.conf" <<EOF
-[DEFAULT]
-main-repo = gentoo
+# Clean up mounts
+log_step "Unmounting and cleaning..."
+umount -l "$BUILD_DIR/rootfs/dev" || true
+umount -l "$BUILD_DIR/rootfs/proc" || true
+umount -l "$BUILD_DIR/rootfs/sys" || true
+umount "$BUILD_DIR/bootfs" || true
+umount "$BUILD_DIR/rootfs" || true
+rmdir "$BUILD_DIR/bootfs" "$BUILD_DIR/rootfs" || true
 
-[genpi64]
-location = /var/db/repos/genpi64
-sync-type = rsync
-sync-uri = rsync://dev.drassal.net/genpi64-portage_20250115
-priority = 100
-auto-sync = yes
-EOF
-
-log_step "Writing make.conf..."
-cat > "$ROOTFS/etc/portage/make.conf" <<EOF
-MAKEOPTS="-j5 -l4"
-EMERGE_DEFAULT_OPTS="--jobs=5 --load-average=4"
-VIDEO_CARDS="fbdev vc4 v3d"
-INPUT_DEVICES="evdev synaptics"
-FEATURES="\${FEATURES} getbinpkg"
-PORTAGE_BINHOST="https://dev.drassal.net/genpi64/pi64pie_20250115_binpkgs"
-GENTOO_MIRRORS="https://mirrors.evowise.com/gentoo/ https://mirrors.lug.mtu.edu/gentoo/ http://distfiles.gentoo.org"
-PKGDIR=/var/cache/binpkgs
-DISTDIR=/var/cache/distfiles
-PYTHON_TARGETS="python3_11 python3_12"
-EOF
-
-log_step "Enabling SSH login for root (temporary)..."
-sed -i 's|^#PermitRootLogin.*|PermitRootLogin yes|' "$ROOTFS/etc/ssh/sshd_config" || true
-
-log_success "System base config complete"
+log_success "Install finalized. SD card ready to boot."
