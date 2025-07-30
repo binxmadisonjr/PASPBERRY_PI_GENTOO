@@ -15,5 +15,5 @@ Based largely on @allans-workshop on YouTube
 2. **Run** the install script as root:
 
 ```bash
-chmod +x install.sh
+chmod +x setup/*.sh install.sh
 sudo ./install.sh
