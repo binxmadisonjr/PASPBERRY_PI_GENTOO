@@ -7,35 +7,38 @@ check_root
 
 log_title "Step 4: System Configuration"
 
+ROOTFS="$BUILD_DIR/rootfs"
+BOOTFS="$BUILD_DIR/bootfs"
+
 # Hash root password
 ROOT_PASSWORD_SALT=$(openssl rand -base64 12)
 ROOT_PASSWORD_HASHED=$(openssl passwd -6 -salt "$ROOT_PASSWORD_SALT" "$ROOT_PASSWORD")
 
 log_step "Setting root password..."
-sed -i "s|^root:[^:]*:|root:${ROOT_PASSWORD_HASHED}:|" rootfs/etc/shadow
+sed -i "s|^root:[^:]*:|root:${ROOT_PASSWORD_HASHED}:|" "$ROOTFS/etc/shadow"
 
 log_step "Setting keyboard layout: $KEYMAP"
-echo "KEYMAP=\"$KEYMAP\"" > rootfs/etc/conf.d/keymaps
+echo "KEYMAP=\"$KEYMAP\"" > "$ROOTFS/etc/conf.d/keymaps"
 
 log_step "Setting hostname: $HOSTNAME"
-echo "$HOSTNAME" > rootfs/etc/hostname
+echo "$HOSTNAME" > "$ROOTFS/etc/hostname"
 
 log_step "Linking net.end0 for Ethernet..."
-ln -sf net.lo rootfs/etc/init.d/net.end0
+ln -sf net.lo "$ROOTFS/etc/init.d/net.end0"
 
 log_step "Fixing ttyAMA0 bug..."
-sed -i 's/^f0/#f0/' rootfs/etc/inittab
+sed -i 's/^f0/#f0/' "$ROOTFS/etc/inittab"
 
 log_step "Adding fstab entry..."
-echo "PARTUUID=6c586e13-01 /boot vfat defaults,noatime 0 0" >> rootfs/etc/fstab
+echo "PARTUUID=6c586e13-01 /boot vfat defaults,noatime 0 0" >> "$ROOTFS/etc/fstab"
 
 log_step "Editing cmdline.txt..."
-sed -i "s|root=.* |root=PARTUUID=6c586e13-02 rootfstype=btrfs rootdelay=0 |" bootfs/cmdline.txt
+sed -i "s|root=.* |root=PARTUUID=6c586e13-02 rootfstype=btrfs rootdelay=0 |" "$BOOTFS/cmdline.txt"
 
 log_step "Setting up Portage repos.conf..."
-mkdir -p rootfs/etc/portage/repos.conf
+mkdir -p "$ROOTFS/etc/portage/repos.conf"
 
-cat > rootfs/etc/portage/repos.conf/gentoo.conf <<EOF
+cat > "$ROOTFS/etc/portage/repos.conf/gentoo.conf" <<EOF
 [DEFAULT]
 main-repo = gentoo
 
@@ -46,7 +49,7 @@ sync-uri = rsync://dev.drassal.net/gentoo-portage_20250115
 auto-sync = yes
 EOF
 
-cat > rootfs/etc/portage/repos.conf/genpi64.conf <<EOF
+cat > "$ROOTFS/etc/portage/repos.conf/genpi64.conf" <<EOF
 [DEFAULT]
 main-repo = gentoo
 
@@ -59,7 +62,7 @@ auto-sync = yes
 EOF
 
 log_step "Writing make.conf..."
-cat > rootfs/etc/portage/make.conf <<EOF
+cat > "$ROOTFS/etc/portage/make.conf" <<EOF
 MAKEOPTS="-j5 -l4"
 EMERGE_DEFAULT_OPTS="--jobs=5 --load-average=4"
 VIDEO_CARDS="fbdev vc4 v3d"
@@ -73,6 +76,6 @@ PYTHON_TARGETS="python3_11 python3_12"
 EOF
 
 log_step "Enabling SSH login for root (temporary)..."
-sed -i 's|^#PermitRootLogin.*|PermitRootLogin yes|' rootfs/etc/ssh/sshd_config
+sed -i 's|^#PermitRootLogin.*|PermitRootLogin yes|' "$ROOTFS/etc/ssh/sshd_config"
 
 log_success "System base config complete"
