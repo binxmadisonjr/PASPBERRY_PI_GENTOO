@@ -7,8 +7,6 @@ load_config
 log_title "Step 1: Downloading Required Files"
 
 # Create working directory
-BUILD_DIR="/var/datadisk/raspberrypi_gentoo_rpi64/build_$(date +%Y%m%d_%H%M%S)"
-mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
 # File URLs
