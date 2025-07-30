@@ -6,7 +6,7 @@ load_config
 
 log_title "Step 1: Downloading Required Files"
 
-# Create working directory
+# Change directory to build directory
 cd "$BUILD_DIR"
 
 # File URLs
