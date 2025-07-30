@@ -9,8 +9,8 @@ log_title "Step 2: Partitioning and Formatting SD Card"
 
 # Unmount if mounted
 log_step "Unmounting existing partitions..."
-umount "${SDCARD}"1 || true
-umount "${SDCARD}"2 || true
+umount "${SDCARD}1" || true
+umount "${SDCARD}2" || true
 
 # Partition
 log_step "Creating partition table..."
@@ -21,7 +21,7 @@ parted --script "$SDCARD" \
   set 1 boot on \
   set 1 lba on
 
-# Set PARTUUID for fstab later
+# Set static PARTUUID for consistency in /etc/fstab
 log_step "Setting static PARTUUID..."
 fdisk "$SDCARD" <<EOF &>/dev/null
 x
@@ -31,16 +31,17 @@ r
 w
 EOF
 
-# Format
+# Format partitions
 log_step "Formatting partitions..."
 mkfs.vfat -F 32 -n bootfs "${SDCARD}1"
 mkfs.btrfs -f -L rootfs "${SDCARD}2"
 
-# Mount points
-mkdir -p bootfs rootfs
+# Create mountpoints in $BUILD_DIR
+mkdir -p "$BUILD_DIR/bootfs" "$BUILD_DIR/rootfs"
 
+# Mount partitions into the build structure
 log_step "Mounting partitions..."
-mount -o rw,nosuid,nodev,relatime "${SDCARD}1" bootfs
-mount -o noatime,compress=zstd:15,ssd,discard,x-systemd.growfs "${SDCARD}2" rootfs
+mount -o rw,nosuid,nodev,relatime "${SDCARD}1" "$BUILD_DIR/bootfs"
+mount -o noatime,compress=zstd:15,ssd,discard,x-systemd.growfs "${SDCARD}2" "$BUILD_DIR/rootfs"
 
 log_success "Partitions formatted and mounted"
