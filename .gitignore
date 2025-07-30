@@ -1,0 +1,19 @@
+# Build artifacts
+build/
+rootfs/
+bootfs/
+
+# Logs
+.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Python venv 
+venv/
+__pycache__/
+
+# Shell history
+*.swp
+*.swo

@@ -7,11 +7,15 @@ check_root
 
 log_title "Step 5: Final Setup (User, Services, Display)"
 
+# Make mountpoints before attempting to mount
+cd "$BUILD_DIR"
+mkdir -p rootfs/dev rootfs/proc rootfs/sys
+
 # Mount virtual filesystems
 log_step "Mounting /dev, /proc, /sys to chroot..."
-mount --bind /dev rootfs/dev
-mount --bind /proc rootfs/proc
-mount --bind /sys rootfs/sys
+mount --bind /dev "$BUILD_DIR/rootfs/dev"
+mount --bind /proc "$BUILD_DIR/rootfs/proc"
+mount --bind /sys "$BUILD_DIR/rootfs/sys"
 
 log_step "Entering chroot environment..."
 
@@ -19,7 +23,7 @@ log_step "Entering chroot environment..."
 export USERNAME ROOT_PASSWORD TIMEZONE KEYMAP
 
 # Run commands in chroot
-env -i USERNAME="$USERNAME" ROOT_PASSWORD="$ROOT_PASSWORD" TIMEZONE="$TIMEZONE" KEYMAP="$KEYMAP" chroot rootfs /bin/bash <<'EOF'
+env -i USERNAME="$USERNAME" ROOT_PASSWORD="$ROOT_PASSWORD" TIMEZONE="$TIMEZONE" KEYMAP="$KEYMAP" chroot "$BUILD_DIR/rootfs" /bin/bash <<'EOF'
 set -e
 
 emerge --sync
