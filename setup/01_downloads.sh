@@ -22,19 +22,17 @@ KERNEL_SRC_URL="https://dev.drassal.net/genpi64/linux-6.6.74-raspberrypi_2025012
 BINPKG_URL="https://dev.drassal.net/genpi64/binpkgs_202501210142.tar.bz2"
 DISTFILES_URL="https://dev.drassal.net/genpi64/distfiles_202501210142.tar.bz2"
 
-# Core downloads
+# Core files
 log_step "Downloading stage3..."
 wget -nc "$STAGE3_URL"
 wget -nc "$STAGE3_DIGEST_URL"
 
 log_step "Downloading bootfs and kernel components..."
-wget -nc "$BOOTFS_URL"
-wget -nc "$MODULES_URL"
-wget -nc "$FW_NONFREE_URL"
-wget -nc "$FW_BLUEZ_URL"
-wget -nc "$KERNEL_SRC_URL"
+for url in "$BOOTFS_URL" "$MODULES_URL" "$FW_NONFREE_URL" "$FW_BLUEZ_URL" "$KERNEL_SRC_URL"; do
+  wget -nc "$url"
+done
 
-# Optional content
+# Optional files
 if [[ "$BINPKGS_ENABLED" == "true" ]]; then
   log_step "Downloading binpkgs (2.3G)..."
   wget -nc "$BINPKG_URL"
@@ -45,18 +43,20 @@ if [[ "$DISTFILES_ENABLED" == "true" ]]; then
   wget -nc "$DISTFILES_URL"
 fi
 
-# Verify integrity
+# Hash check
 log_step "Verifying stage3 hash..."
-EXPECTED_HASH=$(sed -n '/SHA512 HASH/{n;p;}' "$(basename "$STAGE3_DIGEST_URL")" | grep "$(basename "$STAGE3_URL")"'$' | tail -n 1 | cut -f 1 -d' ')
-ACTUAL_HASH=$(sha512sum "$(basename "$STAGE3_URL")" | cut -f 1 -d' ')
+DIGEST_FILE=$(basename "$STAGE3_DIGEST_URL")
+STAGE3_FILE=$(basename "$STAGE3_URL")
+EXPECTED_HASH=$(grep "$STAGE3_FILE\$" "$DIGEST_FILE" | tail -n 1 | cut -d ' ' -f1)
+ACTUAL_HASH=$(sha512sum "$STAGE3_FILE" | cut -d ' ' -f1)
 
 if [[ "$EXPECTED_HASH" != "$ACTUAL_HASH" ]]; then
-  echo "Hash mismatch!"
+  echo "❌ Hash mismatch!"
   exit 1
 fi
 
-# Final confirmation
-log_step "Downloaded files:"
+log_step "Downloaded files in $BUILD_DIR:"
 ls -lh "$BUILD_DIR"
 
 log_success "All downloads complete and verified"
+
