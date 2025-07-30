@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+
 source ./setup/shared.sh
 source ./config.env
 load_config
@@ -8,6 +9,9 @@ check_root
 log_title "Step 3: Extracting Base System"
 
 cd "$BUILD_DIR"
+mkdir -p bootfs rootfs
+
+[[ -f bootfs_20250128.tar.bz2 ]] || { echo "❌ bootfs not found in $BUILD_DIR"; exit 1; }
 
 log_step "Extracting bootfs..."
 tar xjfp bootfs_20250128.tar.bz2 -C bootfs
@@ -30,7 +34,8 @@ tar xpjf linux-6.6.74-raspberrypi_20250128.tar.bz2 -C rootfs/usr/src/linux-6.6.7
 
 log_step "Creating kernel symlink..."
 cd rootfs/usr/src
-ln -s linux-6.6.74-raspberrypi_20250128 linux
+ln -s linux-6.6.74-raspberrypi_20250128 linux || true
 cd ../../..
 
 log_success "All base files extracted"
+
