@@ -46,7 +46,7 @@ EXPECTED_HASH=$(sed -n '/SHA512 HASH/{n;p;}' "$(basename "$STAGE3_DIGEST_URL")" 
 ACTUAL_HASH=$(sha512sum "$(basename "$STAGE3_URL")" | cut -f 1 -d' ')
 
 if [[ "$EXPECTED_HASH" != "$ACTUAL_HASH" ]]; then
-  echo "❌ Hash mismatch!"
+  echo "Hash mismatch!"
   exit 1
 fi
 
