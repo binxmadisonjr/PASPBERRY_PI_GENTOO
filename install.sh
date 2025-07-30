@@ -1,34 +1,17 @@
 #!/bin/bash
+set -e
 
-log_title() {
-  echo -e "\n\033[1;34m==> $1\033[0m"
-}
+# Load config and shared functions
+source ./config.env
+source ./setup/shared.sh
 
-log_step() {
-  echo -e "\033[1;33m--> $1\033[0m"
-}
+# Main script steps
+log_title "Starting Gentoo Install Script for Raspberry Pi (5)"
 
-log_success() {
-  echo -e "\033[1;32m✔ $1\033[0m"
-}
+./setup/01_downloads.sh
+./setup/02_partition_format.sh
+./setup/03_extract_files.sh
+./setup/04_config_system.sh
+./setup/05_finalize.sh
 
-check_root() {
-  if [[ $EUID -ne 0 ]]; then
-    echo "Please run as root"
-    exit 1
-  fi
-}
-
-require_vars() {
-  local vars=("$@")
-  for var in "${vars[@]}"; do
-    if [[ -z "${!var}" ]]; then
-      echo "Missing required config value: $var"
-      exit 1
-    fi
-  done
-}
-
-load_config() {
-  require_vars SDCARD ROOT_PASSWORD HOSTNAME KEYMAP TIMEZONE USERNAME
-}
+log_success "Gentoo installation complete. You may now boot your Raspberry Pi."
