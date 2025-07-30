@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+
 source ./config.env
 source ./setup/shared.sh
 load_config
@@ -76,6 +77,6 @@ PYTHON_TARGETS="python3_11 python3_12"
 EOF
 
 log_step "Enabling SSH login for root (temporary)..."
-sed -i 's|^#PermitRootLogin.*|PermitRootLogin yes|' "$ROOTFS/etc/ssh/sshd_config"
+sed -i 's|^#PermitRootLogin.*|PermitRootLogin yes|' "$ROOTFS/etc/ssh/sshd_config" || true
 
 log_success "System base config complete"
