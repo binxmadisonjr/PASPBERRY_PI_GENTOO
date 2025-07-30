@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 source ./setup/shared.sh
+source ./config.env
 load_config
 check_root
 
