@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-source $BUILD_DIR/config.env
-source $BUILD_DIR/setup/shared.sh
+source $DIR/config.env
+source $DIR/setup/shared.sh
 load_config
 
 log_title "Step 1: Downloading Required Files"
