@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-source ./config.env
-source ./setup/shared.sh
+source $BUILD_DIR/config.env
+source $BUILD_DIR/setup/shared.sh
 load_config
 
 log_title "Step 1: Downloading Required Files"
@@ -51,7 +51,7 @@ EXPECTED_HASH=$(grep "$STAGE3_FILE\$" "$DIGEST_FILE" | tail -n 1 | cut -d ' ' -f
 ACTUAL_HASH=$(sha512sum "$STAGE3_FILE" | cut -d ' ' -f1)
 
 if [[ "$EXPECTED_HASH" != "$ACTUAL_HASH" ]]; then
-  echo "❌ Hash mismatch!"
+  echo "Hash mismatch!"
   exit 1
 fi
 
