@@ -10,7 +10,7 @@ log_title "Step 5: Final Setup (User, Services, Display)"
 
 # Ensure mountpoints exist
 cd "$BUILD_DIR"
-mkdir -p rootfs/dev rootfs/proc rootfs/sys
+mkdir -p $BUILD_DIR/rootfs/dev $BUILD_DIR/rootfs/proc $BUILD_DIR_rootfs/sys
 
 # Mount virtual filesystems
 log_step "Mounting /dev, /proc, /sys to chroot..."
@@ -27,6 +27,7 @@ export USERNAME ROOT_PASSWORD TIMEZONE KEYMAP
 env -i USERNAME="$USERNAME" ROOT_PASSWORD="$ROOT_PASSWORD" TIMEZONE="$TIMEZONE" KEYMAP="$KEYMAP" chroot "$BUILD_DIR/rootfs" /bin/bash <<'EOF'
 set -e
 
+export PS1="(RASPBERRY_PI_GENTOO@chroot) # "
 # Sync and set profile
 emerge --sync
 eselect profile set genpi64:default/linux/arm64/23.0/split-usr/desktop/genpi64
