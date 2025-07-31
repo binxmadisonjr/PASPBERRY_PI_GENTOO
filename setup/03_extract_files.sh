@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e
 
-source $DIR/setup/shared.sh
-source $DIR/config.env
+DIR="/root/RASPBERRY_PI_GENTOO"
+source "$DIR/config.env"
+source "$DIR/setup/shared.sh"
 load_config
 check_root
 
@@ -41,5 +42,3 @@ ln -sf linux-6.6.74-raspberrypi_20250128 linux
 cd "$BUILD_DIR"
 
 log_success "All base files extracted"
-
-
