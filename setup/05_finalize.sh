@@ -10,7 +10,7 @@ log_title "Step 5: Final Setup (User, Services, Display)"
 
 # Ensure mountpoints exist
 cd "$BUILD_DIR"
-mkdir -p $BUILD_DIR/rootfs/dev $BUILD_DIR/rootfs/proc $BUILD_DIR_rootfs/sys
+mkdir -p $BUILD_DIR/rootfs/dev $BUILD_DIR/rootfs/proc $BUILD_DIR/rootfs/sys
 
 # Mount virtual filesystems
 log_step "Mounting /dev, /proc, /sys to chroot..."
@@ -102,6 +102,8 @@ EOF
 
 # Clean up mounts
 log_step "Unmounting and cleaning..."
+sync
+sleep 1
 umount -l "$BUILD_DIR/rootfs/dev" || true
 umount -l "$BUILD_DIR/rootfs/proc" || true
 umount -l "$BUILD_DIR/rootfs/sys" || true
