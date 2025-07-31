@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-source ./setup/shared.sh
-source ./config.env
+source $BUILD_DIR/setup/shared.sh
+source $BUILD_DIR/config.env
 load_config
 check_root
 
