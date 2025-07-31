@@ -16,4 +16,4 @@ Based largely on @allans-workshop on YouTube
 
 ```bash
 chmod +x setup/*.sh install.sh
-sudo ./install.sh
+./install.sh
