@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e
 
-source $DIR/config.env
-source $DIR/setup/shared.sh
+DIR="/root/RASPBERRY_PI_GENTOO"
+source "$DIR/config.env"
+source "$DIR/setup/shared.sh"
 load_config
 check_root
 
