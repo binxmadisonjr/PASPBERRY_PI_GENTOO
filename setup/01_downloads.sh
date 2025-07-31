@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e
 
-source $DIR/config.env
-source $DIR/setup/shared.sh
+DIR="/root/RASPBERRY_PI_GENTOO"
+source "$DIR/config.env"
+source "$DIR/setup/shared.sh"
 load_config
 
 log_title "Step 1: Downloading Required Files"
@@ -11,7 +12,7 @@ log_title "Step 1: Downloading Required Files"
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
-# URLs
+# URLs (Might want to move this later to config.env)
 STAGE3_URL="https://dev.drassal.net/genpi64/stage3-arm64-openrc-splitusr-20250112T234833Z.tar.xz"
 STAGE3_DIGEST_URL="$STAGE3_URL.DIGESTS"
 BOOTFS_URL="https://dev.drassal.net/genpi64/bootfs_20250128.tar.bz2"
@@ -22,7 +23,7 @@ KERNEL_SRC_URL="https://dev.drassal.net/genpi64/linux-6.6.74-raspberrypi_2025012
 BINPKG_URL="https://dev.drassal.net/genpi64/binpkgs_202501210142.tar.bz2"
 DISTFILES_URL="https://dev.drassal.net/genpi64/distfiles_202501210142.tar.bz2"
 
-# Core files
+# Download files
 log_step "Downloading stage3..."
 wget -nc "$STAGE3_URL"
 wget -nc "$STAGE3_DIGEST_URL"
@@ -51,12 +52,10 @@ EXPECTED_HASH=$(grep "$STAGE3_FILE\$" "$DIGEST_FILE" | tail -n 1 | cut -d ' ' -f
 ACTUAL_HASH=$(sha512sum "$STAGE3_FILE" | cut -d ' ' -f1)
 
 if [[ "$EXPECTED_HASH" != "$ACTUAL_HASH" ]]; then
-  echo "Hash mismatch!"
-  exit 1
+  log_error "Hash mismatch!"
 fi
 
 log_step "Downloaded files in $BUILD_DIR:"
 ls -lh "$BUILD_DIR"
 
 log_success "All downloads complete and verified"
-
