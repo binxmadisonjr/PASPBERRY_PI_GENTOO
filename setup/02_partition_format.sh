@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-source $BUILD_DIR/config.env
-source $BUILD_DIR/setup/shared.sh
+source $DIR/config.env
+source $DIR/setup/shared.sh
 load_config
 check_root
 
@@ -39,10 +39,10 @@ mkfs.btrfs -f -L rootfs "${SDCARD}2"
 
 # Create and mount to build directory
 log_step "Creating mountpoints in build directory..."
-mkdir -p "$BUILD_DIR/bootfs" "$BUILD_DIR/rootfs"
+mkdir -p "$MOUNT_POINT/bootfs" "$MOUNT_POINT/rootfs"
 
 log_step "Mounting partitions..."
-mount -o rw,nosuid,nodev,relatime "${SDCARD}1" "$BUILD_DIR/bootfs"
-mount -o noatime,compress=zstd:15,ssd,discard,x-systemd.growfs "${SDCARD}2" "$BUILD_DIR/rootfs"
+mount -o rw,nosuid,nodev,relatime "${SDCARD}1" "$MOUNT_POINT/bootfs"
+mount -o noatime,compress=zstd:15,ssd,discard,x-systemd.growfs "${SDCARD}2" "$MOUNT_POINT/rootfs"
 
 log_success "Partitions formatted and mounted"
