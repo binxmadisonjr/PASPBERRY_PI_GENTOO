@@ -19,6 +19,9 @@ mount --bind /dev "$BUILD_DIR/rootfs/dev"
 mount --bind /proc "$BUILD_DIR/rootfs/proc"
 mount --bind /sys "$BUILD_DIR/rootfs/sys"
 
+# Copy DNS settings from live system to chroot for networking
+cp /etc/resolv.conf "$BUILD_DIR/rootfs/etc/resolv.conf"
+
 # Write environment variables to a file inside rootfs for chroot session
 cat > "$BUILD_DIR/rootfs/tmp/chroot_env.sh" <<EOF
 export USERNAME="$USERNAME"
