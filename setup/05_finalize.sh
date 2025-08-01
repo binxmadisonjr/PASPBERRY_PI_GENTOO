@@ -19,14 +19,18 @@ mount --bind /dev "$BUILD_DIR/rootfs/dev"
 mount --bind /proc "$BUILD_DIR/rootfs/proc"
 mount --bind /sys "$BUILD_DIR/rootfs/sys"
 
+# Write environment variables to a file inside rootfs for chroot session
+cat > "$BUILD_DIR/rootfs/tmp/chroot_env.sh" <<EOF
+export USERNAME="$USERNAME"
+export ROOT_PASSWORD="$ROOT_PASSWORD"
+export TIMEZONE="$TIMEZONE"
+export KEYMAP="$KEYMAP"
+EOF
+
 log_step "Entering chroot environment..."
 
-# Export variables to chroot
-export USERNAME ROOT_PASSWORD TIMEZONE KEYMAP
-
-# Run commands in chroot
-env -i USERNAME="$USERNAME" ROOT_PASSWORD="$ROOT_PASSWORD" TIMEZONE="$TIMEZONE" KEYMAP="$KEYMAP" chroot "$BUILD_DIR/rootfs" /bin/bash <<'EOF'
-set -e
+chroot "$BUILD_DIR/rootfs" /bin/bash -c 'set -e
+source /tmp/chroot_env.sh
 
 export PS1="(RASPBERRY_PI_GENTOO@chroot) # "
 # Sync and set profile
@@ -57,12 +61,12 @@ echo "$USERNAME:$ROOT_PASSWORD" | chpasswd
 usermod -aG wheel "$USERNAME"
 
 # Sudo privileges
-sed -i 's|# %wheel|%wheel|' /etc/sudoers
-sed -i 's|ALL=(ALL:ALL) ALL|ALL=(ALL:ALL) NOPASSWD: ALL|' /etc/sudoers
+sed -i "s|# %wheel|%wheel|" /etc/sudoers
+sed -i "s|ALL=(ALL:ALL) ALL|ALL=(ALL:ALL) NOPASSWD: ALL|" /etc/sudoers
 
 # Lock root login
 passwd -l root
-sed -i 's|^PermitRootLogin.*|#PermitRootLogin prohibit-password|' /etc/ssh/sshd_config
+sed -i "s|^PermitRootLogin.*|#PermitRootLogin prohibit-password|" /etc/ssh/sshd_config
 
 # Enable services
 rc-update add dbus default
@@ -72,34 +76,37 @@ rc-update add sshd default
 rc-update add ntpd default
 
 # Configure display manager
-echo 'DISPLAY_MANAGER="lightdm"' > /etc/conf.d/display-manager
-echo 'XSESSION="Xfce4"' > /etc/env.d/90xsession
+echo "DISPLAY_MANAGER=\"lightdm\"" > /etc/conf.d/display-manager
+echo "XSESSION=\"Xfce4\"" > /etc/env.d/90xsession
 env-update && source /etc/profile
 
 # Optional: fix LightDM background if default exists
-sed -i 's|user-background=true|user-background=false|' /etc/lightdm/lightdm-gtk-greeter.conf || true
+sed -i "s|user-background=true|user-background=false|" /etc/lightdm/lightdm-gtk-greeter.conf || true
 
 # X11 keyboard + video
 mkdir -p /etc/X11/xorg.conf.d
 
 cat > /etc/X11/xorg.conf.d/99-keyboard-layout.conf <<KBD
-Section "InputClass"
-  Identifier "system-keyboard"
-  MatchIsKeyboard "on"
-  Option "XkbLayout" "$KEYMAP"
+Section \"InputClass\"
+  Identifier \"system-keyboard\"
+  MatchIsKeyboard \"on\"
+  Option \"XkbLayout\" \"$KEYMAP\"
 EndSection
 KBD
 
 cat > /etc/X11/xorg.conf.d/99-video.conf <<VID
-Section "OutputClass"
-  Identifier "vc4"
-  MatchDriver "vc4"
-  Driver "modesetting"
-  Option "Accel" "true"
-  Option "PrimaryGPU" "true"
+Section \"OutputClass\"
+  Identifier \"vc4\"
+  MatchDriver \"vc4\"
+  Driver \"modesetting\"
+  Option \"Accel\" \"true\"
+  Option \"PrimaryGPU\" \"true\"
 EndSection
 VID
-EOF
+
+# Clean up the temp env file
+rm -f /tmp/chroot_env.sh
+'
 
 # Clean up mounts
 log_step "Unmounting and cleaning..."
