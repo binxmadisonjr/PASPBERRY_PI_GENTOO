@@ -7,9 +7,8 @@ source "$DIR/setup/shared.sh"
 load_config
 check_root
 
-log_title "Step 5: Final Setup (User, Services, Display)"
+log_title "Step 5: Final Setup (User, Services, Display, systemd)"
 
-# Use $BUILD_DIR (no longer using $MOUNT_POINT)
 cd "$BUILD_DIR"
 mkdir -p "$BUILD_DIR/rootfs/dev" "$BUILD_DIR/rootfs/proc" "$BUILD_DIR/rootfs/sys"
 
@@ -19,10 +18,9 @@ mount --bind /dev "$BUILD_DIR/rootfs/dev"
 mount --bind /proc "$BUILD_DIR/rootfs/proc"
 mount --bind /sys "$BUILD_DIR/rootfs/sys"
 
-# Copy DNS settings from live system to chroot for networking
 cp /etc/resolv.conf "$BUILD_DIR/rootfs/etc/resolv.conf"
 
-# Write environment variables to a file inside rootfs for chroot session
+# Write environment variables for chroot session
 cat > "$BUILD_DIR/rootfs/tmp/chroot_env.sh" <<EOF
 export USERNAME="$USERNAME"
 export ROOT_PASSWORD="$ROOT_PASSWORD"
@@ -36,78 +34,63 @@ chroot "$BUILD_DIR/rootfs" /bin/bash -c 'set -e
 source /tmp/chroot_env.sh
 
 export PS1="(RASPBERRY_PI_GENTOO@chroot) # "
-# Sync and set profile
+
+# Sync Portage and set profile to official systemd desktop
 emerge --sync
-eselect profile set genpi64:default/linux/arm64/23.0/split-usr/desktop/genpi64
+eselect profile set default/linux/arm64/23.0/desktop/systemd
 
-# Package use flags
-mkdir -p /etc/portage/package.use
-cat > /etc/portage/package.use/rpi-64bit-meta <<USEFLAGS
-dev-embedded/rpi-64bit-meta apps -weekly-genup
-USEFLAGS
-
-# License acceptance
-mkdir -p /etc/portage/package.license
-echo "media-fonts/ipamonafont grass-ipafonts" > /etc/portage/package.license/ipamonafont
-
-# Install meta packages
-emerge --ask=n -j5 --keep-going rpi-64bit-meta
-
-# Config updates
-etc-update --automode -3
+# Set up timezone
 ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
+echo $TIMEZONE > /etc/timezone
+
 env-update && source /etc/profile
 
-# Create user
-useradd "$USERNAME"
+# Install systemd services and desktop stack
+emerge --ask=n -j5 --keep-going net-misc/networkmanager net-misc/openssh sys-apps/systemd-timesyncd \
+x11-base/xorg-server x11-terms/xterm x11-wm/i3 x11-misc/i3blocks kde-plasma/sddm
+
+# Enable systemd services
+systemctl enable NetworkManager
+systemctl enable sshd
+systemctl enable systemd-timesyncd
+systemctl enable sddm
+
+# Create user and set password
+useradd -m -G wheel,audio,video,users -s /bin/bash "$USERNAME"
 echo "$USERNAME:$ROOT_PASSWORD" | chpasswd
-usermod -aG wheel "$USERNAME"
 
-# Sudo privileges
-sed -i "s|# %wheel|%wheel|" /etc/sudoers
-sed -i "s|ALL=(ALL:ALL) ALL|ALL=(ALL:ALL) NOPASSWD: ALL|" /etc/sudoers
+# Sudo privileges (NOPASSWD for wheel group)
+echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel
 
-# Lock root login
-passwd -l root
-sed -i "s|^PermitRootLogin.*|#PermitRootLogin prohibit-password|" /etc/ssh/sshd_config
-
-# Enable services
-rc-update add dbus default
-rc-update add NetworkManager default
-rc-update add display-manager default
-rc-update add sshd default
-rc-update add ntpd default
-
-# Configure display manager
-echo "DISPLAY_MANAGER=\"lightdm\"" > /etc/conf.d/display-manager
-echo "XSESSION=\"Xfce4\"" > /etc/env.d/90xsession
-env-update && source /etc/profile
-
-# Optional: fix LightDM background if default exists
-sed -i "s|user-background=true|user-background=false|" /etc/lightdm/lightdm-gtk-greeter.conf || true
-
-# X11 keyboard + video
+# X11 keyboard + video config
 mkdir -p /etc/X11/xorg.conf.d
-
 cat > /etc/X11/xorg.conf.d/99-keyboard-layout.conf <<KBD
-Section \"InputClass\"
-  Identifier \"system-keyboard\"
-  MatchIsKeyboard \"on\"
-  Option \"XkbLayout\" \"$KEYMAP\"
+Section "InputClass"
+  Identifier "system-keyboard"
+  MatchIsKeyboard "on"
+  Option "XkbLayout" "$KEYMAP"
 EndSection
 KBD
 
 cat > /etc/X11/xorg.conf.d/99-video.conf <<VID
-Section \"OutputClass\"
-  Identifier \"vc4\"
-  MatchDriver \"vc4\"
-  Driver \"modesetting\"
-  Option \"Accel\" \"true\"
-  Option \"PrimaryGPU\" \"true\"
+Section "OutputClass"
+  Identifier "vc4"
+  MatchDriver "vc4"
+  Driver "modesetting"
+  Option "Accel" "true"
+  Option "PrimaryGPU" "true"
 EndSection
 VID
 
-# Clean up the temp env file
+# .xinitrc for i3 (if user wants startx)
+echo 'exec i3' > /home/$USERNAME/.xinitrc
+chown $USERNAME:$USERNAME /home/$USERNAME/.xinitrc
+
+# Lock root login for security
+passwd -l root
+sed -i "s|^#PermitRootLogin.*|PermitRootLogin prohibit-password|" /etc/ssh/sshd_config || true
+
+# Clean up temp env file
 rm -f /tmp/chroot_env.sh
 '
 
