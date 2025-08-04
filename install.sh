@@ -2,7 +2,7 @@
 set -e
 
 # ----------- Dependency Pre-flight Check -----------
-REQUIRED_PKGS=(btrfs-progs parted fdisk dosfstools tar wget openssl sudo coreutils chroot)
+REQUIRED_PKGS=(btrfs-progs parted fdisk dosfstools tar wget openssl sudo coreutils)
 
 missing=()
 for pkg in "${REQUIRED_PKGS[@]}"; do
